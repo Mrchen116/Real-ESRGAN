@@ -14,7 +14,7 @@ def main():
         type=str,
         default='experiments/pretrained_models/RealESRGAN_x4plus.pth',
         help='Path to the pre-trained model')
-    parser.add_argument('--output', type=str, default='results', help='Output folder')
+    parser.add_argument('--output', type=str, default='results', help='Output video name')
     parser.add_argument('--netscale', type=int, default=4, help='Upsample scale factor of the network')
     parser.add_argument('--outscale', type=float, default=4, help='The final upsampling scale of the image')
     parser.add_argument('--suffix', type=str, default='out', help='Suffix of the restored image')
@@ -51,7 +51,7 @@ def main():
             arch='clean',
             channel_multiplier=2,
             bg_upsampler=upsampler)
-    os.makedirs(args.output, exist_ok=True)
+    # os.makedirs(args.output, exist_ok=True)
 
     path = args.input
     videoname, extension = os.path.splitext(os.path.basename(path))
@@ -59,8 +59,9 @@ def main():
 
     cap = cv2.VideoCapture(path)
     writer = None
-    save_path = os.path.join(args.output, f'{videoname}_{args.suffix}.mp4')
-
+    # save_path = os.path.join(args.output, f'{videoname}_{args.suffix}.mp4')
+    save_path = args.output
+    
     while True:
         ret, img = cap.read()
         if not ret:
