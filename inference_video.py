@@ -58,6 +58,7 @@ def main():
     print('Testing', videoname)
 
     cap = cv2.VideoCapture(path)
+    fps = cap.get(5)
     writer = None
     # save_path = os.path.join(args.output, f'{videoname}_{args.suffix}.mp4')
     save_path = args.output
@@ -72,7 +73,7 @@ def main():
                 new_h, new_w = h * 4, w * 4
             elif args.outscale == 2:
                 new_h, new_w = h * 2, w * 2
-            writer = cv2.VideoWriter(save_path, cv2.VideoWriter_fourcc(*'MP4V'), 25.0, (new_w, new_h))
+            writer = cv2.VideoWriter(save_path, cv2.VideoWriter_fourcc(*'MP4V'), fps, (new_w, new_h))
             if max(h, w) > 1000 and args.netscale == 4:
                 import warnings
                 warnings.warn('The input image is large, try X2 model for better performace.')
