@@ -119,11 +119,14 @@ This executable file is based on the wonderful [Tencent/ncnn](https://github.com
 Download pre-trained models: [RealESRGAN_x4plus.pth](https://github.com/xinntao/Real-ESRGAN/releases/download/v0.1.0/RealESRGAN_x4plus.pth)
 
 Download pretrained models:
-
+- x4plus:
 ```bash
 wget https://github.com/xinntao/Real-ESRGAN/releases/download/v0.1.0/RealESRGAN_x4plus.pth -P experiments/pretrained_models
 ```
-
+- x2plus:
+```bash
+wget https://github.com/xinntao/Real-ESRGAN/releases/download/v0.2.1/RealESRGAN_x2plus.pth -P experiments/pretrained_models
+```
 Inference!
 
 ```bash
