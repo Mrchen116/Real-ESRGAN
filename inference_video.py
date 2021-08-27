@@ -2,9 +2,43 @@ import argparse
 import cv2
 import glob
 import os
+from tqdm import tqdm
 
 from realesrgan import RealESRGANer
 
+class Inference:
+    def __init__(self, args) -> None:
+        self.upsampler = RealESRGANer(
+            scale=args.netscale,
+            model_path=args.model_path,
+            tile=args.tile,
+            tile_pad=args.tile_pad,
+            pre_pad=args.pre_pad,
+            half=args.half)
+
+        if args.face_enhance:
+            from gfpgan import GFPGANer
+            self.face_enhancer = GFPGANer(
+                model_path='https://github.com/TencentARC/GFPGAN/releases/download/v0.2.0/GFPGANCleanv1-NoCE-C2.pth',
+                upscale=args.outscale,
+                arch='clean',
+                channel_multiplier=2,
+                bg_upsampler=self.upsampler)
+        
+        self.args = args
+    
+    def inference(self, img):
+        try:
+            if self.args.face_enhance:
+                _, _, output = self.face_enhancer.enhance(img, has_aligned=False, only_center_face=False, paste_back=True)
+            else:
+                output, _ = self.upsampler.enhance(img, outscale=self.args.outscale)
+        except Exception as error:
+            print('Error', error)
+            print('If you encounter CUDA out of memory, try to set --tile with a smaller number.')
+            return None
+        else:
+            return output
 
 def main():
     parser = argparse.ArgumentParser()
@@ -35,22 +69,7 @@ def main():
         help='Image extension. Options: auto | jpg | png, auto means using the same extension as inputs')
     args = parser.parse_args()
 
-    upsampler = RealESRGANer(
-        scale=args.netscale,
-        model_path=args.model_path,
-        tile=args.tile,
-        tile_pad=args.tile_pad,
-        pre_pad=args.pre_pad,
-        half=args.half)
-
-    if args.face_enhance:
-        from gfpgan import GFPGANer
-        face_enhancer = GFPGANer(
-            model_path='https://github.com/TencentARC/GFPGAN/releases/download/v0.2.0/GFPGANCleanv1-NoCE-C2.pth',
-            upscale=args.outscale,
-            arch='clean',
-            channel_multiplier=2,
-            bg_upsampler=upsampler)
+    
     # os.makedirs(args.output, exist_ok=True)
 
     path = args.input
@@ -59,16 +78,17 @@ def main():
 
     cap = cv2.VideoCapture(path)
     fps = cap.get(5)
+    frame_cnt = int(cap.get(7))
     writer = None
     # save_path = os.path.join(args.output, f'{videoname}_{args.suffix}.mp4')
     save_path = args.output
-    
-    while True:
+    infer = Inference(args)
+    for i in tqdm(range(frame_cnt)):
         ret, img = cap.read()
         if not ret:
             break
-        h, w = img.shape[0:2]
-        if writer is None:
+        elif writer is None:
+            h, w = img.shape[0:2]
             if args.outscale == 4:
                 new_h, new_w = h * 4, w * 4
             elif args.outscale == 2:
@@ -81,16 +101,8 @@ def main():
                 import warnings
                 warnings.warn('The input image is small, try X4 model for better performace.')
 
-        try:
-            if args.face_enhance:
-                _, _, output = face_enhancer.enhance(img, has_aligned=False, only_center_face=False, paste_back=True)
-            else:
-                output, _ = upsampler.enhance(img, outscale=args.outscale)
-        except Exception as error:
-            print('Error', error)
-            print('If you encounter CUDA out of memory, try to set --tile with a smaller number.')
-        else:
-            writer.write(output)
+        output = infer.inference(img)
+        writer.write(output)
 
 
 if __name__ == '__main__':
