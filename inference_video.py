@@ -7,16 +7,23 @@ from tqdm import tqdm
 from realesrgan import RealESRGANer
 
 class Inference:
-    def __init__(self, args) -> None:
+    # Namespace(alpha_upsampler='realesrgan', ext='auto', face_enhance=False, half=False, 
+    # input='/root/first-order-model/log/ori1_crop_pic.mp4', 
+    # model_path='experiments/pretrained_models/RealESRGAN_x4plus.pth', netscale=4, 
+    # output='/root/first-order-model/log/enhance_ori1_crop_pic.mp4', 
+    # outscale=4, pre_pad=0, suffix='out', tile=800, tile_pad=10)
+    def __init__(self, face_enhance=False, half=False, 
+                 model_path='experiments/pretrained_models/RealESRGAN_x4plus.pth', netscale=4, outscale=4, 
+                 pre_pad=0, tile=800, tile_pad=10):
         self.upsampler = RealESRGANer(
-            scale=args.netscale,
-            model_path=args.model_path,
-            tile=args.tile,
-            tile_pad=args.tile_pad,
-            pre_pad=args.pre_pad,
-            half=args.half)
+            scale=netscale,
+            model_path=model_path,
+            tile=tile,
+            tile_pad=tile_pad,
+            pre_pad=pre_pad,
+            half=half)
 
-        if args.face_enhance:
+        if face_enhance:
             from gfpgan import GFPGANer
             self.face_enhancer = GFPGANer(
                 model_path='https://github.com/TencentARC/GFPGAN/releases/download/v0.2.0/GFPGANCleanv1-NoCE-C2.pth',
@@ -25,14 +32,15 @@ class Inference:
                 channel_multiplier=2,
                 bg_upsampler=self.upsampler)
         
-        self.args = args
+        self.outscale = outscale
+        self.face_enhance = face_enhance
     
     def inference(self, img):
         try:
-            if self.args.face_enhance:
+            if self.face_enhance:
                 _, _, output = self.face_enhancer.enhance(img, has_aligned=False, only_center_face=False, paste_back=True)
             else:
-                output, _ = self.upsampler.enhance(img, outscale=self.args.outscale)
+                output, _ = self.upsampler.enhance(img, outscale=self.outscale)
         except Exception as error:
             print('Error', error)
             print('If you encounter CUDA out of memory, try to set --tile with a smaller number.')
@@ -48,7 +56,7 @@ def main():
         type=str,
         default='experiments/pretrained_models/RealESRGAN_x4plus.pth',
         help='Path to the pre-trained model')
-    parser.add_argument('--output', type=str, default='results', help='Output video name')
+    parser.add_argument('--output', type=str, default='results.mp4', help='Output video name')
     parser.add_argument('--netscale', type=int, default=4, help='Upsample scale factor of the network')
     parser.add_argument('--outscale', type=float, default=4, help='The final upsampling scale of the image')
     parser.add_argument('--suffix', type=str, default='out', help='Suffix of the restored image')
@@ -68,7 +76,7 @@ def main():
         default='auto',
         help='Image extension. Options: auto | jpg | png, auto means using the same extension as inputs')
     args = parser.parse_args()
-
+    print("_________+------------+______________args :", args)
     
     # os.makedirs(args.output, exist_ok=True)
 
@@ -82,7 +90,8 @@ def main():
     writer = None
     # save_path = os.path.join(args.output, f'{videoname}_{args.suffix}.mp4')
     save_path = args.output
-    infer = Inference(args)
+    infer = Inference(args.face_enhance, args.half,
+                     args.model_path, args.netscale, args.outscale, args.pre_pad, args.tile, args.tile_pad)
     for i in tqdm(range(frame_cnt)):
         ret, img = cap.read()
         if not ret:
